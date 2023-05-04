@@ -27,23 +27,25 @@ type Pager struct {
 }
 
 type AllSetting struct {
-	WebListen          string `json:"webListen" form:"webListen"`
-	WebPort            int    `json:"webPort" form:"webPort"`
-	WebCertFile        string `json:"webCertFile" form:"webCertFile"`
-	WebKeyFile         string `json:"webKeyFile" form:"webKeyFile"`
-	WebBasePath        string `json:"webBasePath" form:"webBasePath"`
-	SessionMaxAge      int    `json:"sessionMaxAge" form:"sessionMaxAge"`
-	ExpireDiff         int    `json:"expireDiff" form:"expireDiff"`
-	TrafficDiff        int    `json:"trafficDiff" form:"trafficDiff"`
-	TgBotEnable        bool   `json:"tgBotEnable" form:"tgBotEnable"`
-	TgBotToken         string `json:"tgBotToken" form:"tgBotToken"`
-	TgBotChatId        string `json:"tgBotChatId" form:"tgBotChatId"`
-	TgRunTime          string `json:"tgRunTime" form:"tgRunTime"`
-	TgBotBackup        bool   `json:"tgBotBackup" form:"tgBotBackup"`
-	TgCpu              int    `json:"tgCpu" form:"tgCpu"`
-	XrayTemplateConfig string `json:"xrayTemplateConfig" form:"xrayTemplateConfig"`
-	TimeLocation       string `json:"timeLocation" form:"timeLocation"`
-	SecretEnable       bool   `json:"secretEnable" form:"secretEnable"`
+	WebListen                string `json:"webListen" form:"webListen"`
+	WebPort                  int    `json:"webPort" form:"webPort"`
+	WebCertFile              string `json:"webCertFile" form:"webCertFile"`
+	WebKeyFile               string `json:"webKeyFile" form:"webKeyFile"`
+	WebBasePath              string `json:"webBasePath" form:"webBasePath"`
+	TgBotEnable              bool   `json:"tgBotEnable" form:"tgBotEnable"`
+	TgBotToken               string `json:"tgBotToken" form:"tgBotToken"`
+	TgBotChatId              int    `json:"tgBotChatId" form:"tgBotChatId"`
+	TgRunTime                string `json:"tgRunTime" form:"tgRunTime"`
+	XrayTemplateConfig       string `json:"xrayTemplateConfig" form:"xrayTemplateConfig"`
+	TgCrmEnabled             bool   `json:"tgCrmEnabled" form:"tgCrmEnabled"`
+	TgClientRegAccList       string `json:"tgClientRegAccList" form:"tgClientRegAccList"`
+	TgClientRegFinalMsg      string `json:"tgClientRegFinalMsg" form:"tgClientRegFinalMsg"`
+	TgMoneyTransferMsg       string `json:"tgMoneyTransferMsg" form:"tgMoneyTransferMsg"`
+	TelegramCrmTargetInbound int    `json:"telegramCrmTargetInbound" form:"telegramCrmTargetInbound"`
+	TgReferToFriendsMsg      string `json:"tgReferToFriendsMsg" form:"tgReferToFriendsMsg"`
+	TgContactSupportMsg      string `json:"tgContactSupportMsg" form:"tgContactSupportMsg"`
+
+	TimeLocation string `json:"timeLocation" form:"timeLocation"`
 }
 
 func (s *AllSetting) CheckValid() error {

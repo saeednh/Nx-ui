@@ -1,4 +1,4 @@
-# 3x-ui
+# Nx-ui
 
 [![](https://img.shields.io/github/v/release/mhsanaei/3x-ui.svg)](https://github.com/MHSanaei/3x-ui/releases)
 [![](https://img.shields.io/github/actions/workflow/status/mhsanaei/3x-ui/release.yml.svg)](#)
@@ -15,16 +15,9 @@ xray panel supporting multi-protocol, **Multi-lang (English,Farsi,Chinese)**
 # Install & Upgrade
 
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/saeednh/Nx-ui/master/install.sh)
 ```
 
-## Install custom version
-
-To install your desired version you can add the version to the end of install command. Example for ver `v1.3.3`:
-
-```
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) v1.3.3
-```
 
 # SSL
 
@@ -190,10 +183,6 @@ Reference syntax:
 - CentOS 8+
 - Fedora 36+
 
-# Buy Me a Coffee
-
-- Tron USDT (TRC20): `TXncxkvhkDWGts487Pjqq1qT9JmwRUz8CC`
-
 
 # Pictures
 
@@ -201,7 +190,3 @@ Reference syntax:
 ![2](./media/2.png)
 ![3](./media/3.png)
 ![4](./media/4.png)
-
-## Stargazers over time
-
-[![Stargazers over time](https://starchart.cc/MHSanaei/3x-ui.svg)](https://starchart.cc/MHSanaei/3x-ui)

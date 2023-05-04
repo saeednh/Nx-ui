@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+{{template "head" .}}
+<style>
+    @media (min-width: 769px) {
+        .ant-layout-content {
+            margin: 24px 16px;
+        }
+    }
+
+    .ant-col-sm-24 {
+        margin-top: 10px;
+    }
+</style>
+<body>
+<a-layout id="app" v-cloak>
+    {{ template "commonSider" . }}
+    <a-layout id="content-layout">
+        <a-layout-content>
+            <a-spin :spinning="spinning" :delay="500" tip="loading">
+                <transition name="list" appear>
+                    <a-tag v-if="false" color="red" style="margin-bottom: 10px">
+                        Please go to the panel settings as soon as possible to modify the username and password, otherwise there may be a risk of leaking account information
+                    </a-tag>
+                </transition>
+                <transition name="list" appear>
+                    <a-card hoverable style="margin-bottom: 20px;">
+                        <a-row>
+                            <a-col :xs="24" :sm="24" :lg="12">
+                                {{ i18n "pages.inbounds.totalDownUp" }}：
+                                <a-tag color="green">[[ sizeFormat(total.up) ]] / [[ sizeFormat(total.down) ]]</a-tag>
+                            </a-col>
+                            <a-col :xs="24" :sm="24" :lg="12">
+                                {{ i18n "pages.inbounds.totalUsage" }}：
+                                <a-tag color="green">[[ sizeFormat(total.up + total.down) ]]</a-tag>
+                            </a-col>
+                            <a-col :xs="24" :sm="24" :lg="12">
+                                {{ i18n "pages.inbounds.inboundCount" }}：
+                                <a-tag color="green">[[ dbInbounds.length ]]</a-tag>
+                            </a-col>
+                            <a-col :xs="24" :sm="24" :lg="12">
+                                {{ i18n "pages.inbounds.clientCount" }}：
+                                <a-tag color="green">[[ clientCount ]]</a-tag>
+                            </a-col>
+                        </a-row>
+                    </a-card>
+                </transition>
+                <transition name="list" appear>
+                    <a-card size="small" :bordered="false" hoverable>
+                        <div slot="title" style="padding-left: 15px;">
+                            Inbounds &nbsp;&nbsp;
+                            <a-button type="primary" shape="round" icon="plus" @click="openAddInbound">Add Inbound</a-button>                            
+                        </div>
+<!--                        <a-input v-model="searchKey" placeholder="搜索" autofocus style="max-width: 300px"></a-input>-->
+                        <a-table :columns="columns" :row-key="dbInbound => dbInbound.id"
+                                 :data-source="dbInbounds"
+                                 :loading="spinning" :scroll="{ x: 1200 }"
+                                 :pagination="false"
+                                 style="margin-top: 10px"
+                                 @change="() => getDBData()">
+                            <template slot="action" slot-scope="text, dbInbound">
+                                <a-icon type="edit" style="font-size: 25px" @click="openEditInbound(dbInbound)"></a-icon>
+                                <a-dropdown :trigger="['click']">
+                                    <a @click="e => e.preventDefault()">{{ i18n "pages.inbounds.operate" }}</a>
+                                    <a-menu slot="overlay" @click="a => clickAction(a, dbInbound)">
+                                        <a-menu-item v-if="dbInbound.hasLink()" key="qrcode">
+                                            <a-icon type="qrcode"></a-icon>
+                                            {{ i18n "qrCode" }}
+                                        </a-menu-item>
+                                        <a-menu-item key="edit">
+                                            <a-icon type="edit"></a-icon>
+                                            {{ i18n "edit" }}
+                                        </a-menu-item>
+                                        <a-menu-item key="resetTraffic">
+                                            <a-icon type="retweet"></a-icon> {{ i18n "pages.inbounds.resetTraffic" }}
+                                        </a-menu-item>
+                                        <a-menu-item key="delete">
+                                            <span style="color: #FF4D4F">
+                                                <a-icon type="delete"></a-icon> {{ i18n "delete"}}
+                                            </span>
+                                        </a-menu-item>
+                                    </a-menu>
+                                </a-dropdown>
+                            </template>
+                            <template slot="protocol" slot-scope="text, dbInbound">
+                                <a-tag color="blue">[[ dbInbound.protocol ]]</a-tag>
+                            </template>
+                            <template slot="traffic" slot-scope="text, dbInbound">
+                                <a-tag color="blue">[[ sizeFormat(dbInbound.up) ]] / [[ sizeFormat(dbInbound.down) ]]</a-tag>
+                                <template v-if="dbInbound.total > 0">
+                                    <a-tag v-if="dbInbound.up + dbInbound.down < dbInbound.total" color="cyan">[[ sizeFormat(dbInbound.total) ]]</a-tag>
+                                    <a-tag v-else color="red">[[ sizeFormat(dbInbound.total) ]]</a-tag>
+                                </template>
+                                <a-tag v-else color="green">{{ i18n "unlimited" }}</a-tag>
+                            </template>
+                            <template slot="settings" slot-scope="text, dbInbound">
+                                <a-button type="link" @click="showInfo(dbInbound)">{{ i18n "check" }}</a-button>
+                            </template>
+                            <template slot="stream" slot-scope="text, dbInbound, index">
+                                <template v-if="dbInbound.isVMess || dbInbound.isVLess || dbInbound.isTrojan || dbInbound.isSS">
+                                    <a-tag color="green">[[ inbounds[index].stream.network ]]</a-tag>
+                                    <a-tag v-if="inbounds[index].stream.isTls" color="blue">tls</a-tag>
+                                    <a-tag v-if="inbounds[index].stream.isXTls" color="blue">xtls</a-tag>
+                                </template>
+                                <template v-else>{{ i18n "none" }}</template>
+                            </template>
+                            <template slot="enable" slot-scope="text, dbInbound">
+                                <a-switch v-model="dbInbound.enable" @change="switchEnable(dbInbound)"></a-switch>
+                            </template>
+                            <template slot="expiryTime" slot-scope="text, dbInbound">
+                                <template v-if="dbInbound.expiryTime > 0">
+                                    <a-tag v-if="dbInbound.isExpiry" color="red">
+                                        [[ DateUtil.formatMillis(dbInbound.expiryTime) ]]
+                                    </a-tag>
+                                    <a-tag v-else color="blue">
+                                        [[ DateUtil.formatMillis(dbInbound.expiryTime) ]]
+                                    </a-tag>
+                                </template>
+                                <a-tag v-else color="green">{{ i18n "indefinite" }}</a-tag>
+                            </template>
+                            <template slot="expandedRowRender" slot-scope="record">
+                                <a-table
+                                v-if="(record.protocol === Protocols.VLESS) || (record.protocol === Protocols.VMESS)"
+                                :row-key="client => client.id"
+                                :columns="innerColumns"
+                                :data-source="getInboundClients(record)"
+                                :pagination="false"
+                                >
+                                    {{template "form/client_row"}}
+                                </a-table>
+                            </template>
+                        </a-table>
+                    </a-card>
+                </transition>
+
+                <transition name="tgMsgList" appear>
+                    <a-card size="small" :bordered="false" hoverable>
+                        <div slot="title" style="padding-left: 15px;">Telegram Client Orders</div>
+                        <a-table :columns="tgMsgColumns" :row-key="tgMsg => tgMsg.chatId"
+                                 :data-source="tgClientMsgs"
+                                 :loading="spinning" :scroll="{ x: 850 }"
+                                 :pagination="false"
+                                 style="margin-top: 10px"
+                                 @change="() => getDBData()">
+                            <template slot="actions" slot-scope="text, tgMsg">
+                                <a-icon v-if="tgMsg.type == 'registration'" type="check" @click="approveTgClient(tgMsg, true)" style="font-size: 25px; color:green"></a-icon>
+                                <a-icon v-if="tgMsg.type == 'renewal'" type="check" @click="approveTgClient(tgMsg, false)" style="font-size: 25px; color:green"></a-icon>
+                                <a-icon type="message" @click="sendMsgToClient(tgMsg.chatId)" style="font-size: 25px"></a-icon>
+                                <a-icon type="close" @click="deleteTgMsg(tgMsg)" style="font-size: 25px; color:red"></a-icon>
+                            </template>
+                            <template slot="msg" slot-scope="text, tgMsg">
+                                <a-tag v-for="msg in tgMsg.msg">
+                                [[ msg ]]
+                                </a-tag>
+                            </template>
+                    </a-table>
+                    </a-card>
+                </transition>
+                <transition name="tgClientList" appear>
+                    <a-card size="small" :bordered="false" hoverable>
+                        <div slot="title" style="padding-left: 15px;">
+                            Telegram Clients &nbsp;&nbsp;
+                            <a-button type="primary" shape="round" icon="message" @click="sendMsgToClient(-1)">Broadcast</a-button>
+                        </div>
+                        <a-table :columns="tgClientColumns" :row-key="tgClient => tgClient.chatId"
+                                 :data-source="tgClients"
+                                 :loading="spinning" :scroll="{ x: 850 }"
+                                 :pagination="false"
+                                 style="margin-top: 10px"
+                                 @change="() => getDBData()">
+                                 <template slot="actions" slot-scope="text, tgClient">
+                                    <a-icon type="message" @click="sendMsgToClient(tgClient.chatId)" style="font-size: 25px"></a-icon>
+                                    <a-icon type="close" @click="deleteTgClient(tgClient)" style="font-size: 25px; color:red"></a-icon>
+                                </template>
+                                <template slot="clientUid" slot-scope="text, tgClient">
+                                    <a-tag v-for="uid in tgClient.clientUid">
+                                    [[ uid ]]
+                                    </a-tag>
+                                </template>
+                                <template slot="enabled" slot-scope="text, tgClient">
+                                <a-switch v-model="tgClient.enabled"></a-switch>
+                            </template>
+                        </a-table>
+                    </a-card>
+                </transition>
+            </a-spin>
+        </a-layout-content>
+    </a-layout>
+</a-layout>
+{{template "js" .}}
+<script>
+
+const columns = [
+    { title: '{{ i18n "pages.inbounds.operate" }}', align: 'center', width: 50, scopedSlots: { customRender: 'action' }, },
+    { title: '{{ i18n "pages.inbounds.enable" }}', align: 'center', width: 40, scopedSlots: { customRender: 'enable' }, },
+    { title: "Id", align: 'center', dataIndex: "id", width: 30, },
+    { title: '{{ i18n "pages.inbounds.remark" }}', align: 'center', width: 100, dataIndex: "remark", },
+    { title: '{{ i18n "pages.inbounds.protocol" }}', align: 'center', width: 60, scopedSlots: { customRender: 'protocol' }, },
+    { title: '{{ i18n "pages.inbounds.port" }}', align: 'center', dataIndex: "port", width: 60, },
+    { title: '{{ i18n "pages.inbounds.traffic" }}↑|↓', align: 'center', width: 150, scopedSlots: { customRender: 'traffic' }, },
+    { title: '{{ i18n "pages.inbounds.details" }}', align: 'center', width: 40, scopedSlots: { customRender: 'settings' }, },
+    { title: '{{ i18n "pages.inbounds.transportConfig" }}', align: 'center', width: 60, scopedSlots: { customRender: 'stream' }, },
+    { title: '{{ i18n "pages.inbounds.expireDate" }}', align: 'center', width: 80, scopedSlots: { customRender: 'expiryTime' }, }
+];
+
+    const innerColumns = [
+    { title: 'ID', width: 20, scopedSlots: { customRender: 'rowIndex' } },
+    { title: '{{ i18n "pages.inbounds.client" }}', width: 80, scopedSlots: { customRender: 'client' } },
+    { title: '{{ i18n "pages.inbounds.traffic" }}', width: 100, scopedSlots: { customRender: 'traffic' } },
+    { title: '{{ i18n "pages.inbounds.expireDate" }}', width: 80, scopedSlots: { customRender: 'expiryTime' } },
+    { title: '{{ i18n "pages.inbounds.uid" }}', width: 150, dataIndex: "id" },
+];
+
+    const tgMsgColumns = [
+    { title: 'Id', align: 'center', width: 20, dataIndex: "id" },
+    { title: '{{ i18n "pages.inbounds.tg.chatId" }}', align: 'center', width: 25, dataIndex: "chatId" },
+    { title: '{{ i18n "pages.inbounds.tg.name" }}', align: 'center', width: 40, dataIndex: "clientName" },
+    { title: '{{ i18n "pages.inbounds.tg.msgType" }}', align: 'center', width: 25, dataIndex: "type" },
+    { title: '{{ i18n "pages.inbounds.tg.msg" }}', align: 'center', width: 80, scopedSlots: { customRender: 'msg' } },
+    { title: '{{ i18n "pages.inbounds.tg.actions" }}', align: 'center', width: 30, scopedSlots: { customRender: 'actions' } },
+];
+
+    const tgClientColumns = [
+    { title: '{{ i18n "pages.inbounds.tg.enabled" }}', align: 'center', width: 20, scopedSlots: { customRender: 'enabled' } },
+    { title: '{{ i18n "pages.inbounds.tg.chatId" }}', align: 'center', width: 25, dataIndex: "chatId" },
+    { title: '{{ i18n "pages.inbounds.tg.name" }}', align: 'center', width: 40, dataIndex: "clientName" },
+    { title: '{{ i18n "pages.inbounds.tg.email" }}', align: 'center', width: 55, dataIndex: "clientEmail" },
+    { title: '{{ i18n "pages.inbounds.uid" }}', align: 'center', width: 80, scopedSlots: { customRender: 'clientUid' } },
+    { title: '{{ i18n "pages.inbounds.tg.actions" }}', align: 'center', width: 20, scopedSlots: { customRender: 'actions' } },
+];
+
+    const protocols = {
+        VMESS: Protocols.VMESS,
+        VLESS: Protocols.VLESS,
+        TROJAN: Protocols.TROJAN,
+        SHADOWSOCKS: Protocols.SHADOWSOCKS,
+        DOKODEMO: Protocols.DOKODEMO,
+        SOCKS: Protocols.SOCKS,
+        HTTP: Protocols.HTTP,
+    };
+
+    const app = new Vue({
+        delimiters: ['[[', ']]'],
+        el: '#app',
+        data: {
+            siderDrawer,
+            spinning: false,
+            inbounds: [],
+            dbInbounds: [],
+            tgClients: [],
+            tgClientMsgs: [],
+            searchKey: '',
+            clientCount: 0,
+        },
+        methods: {
+            loading(spinning=true) {
+                this.spinning = spinning;
+            },
+            async getDBData() {
+                this.loading();
+                const inboundsMsg = await HttpUtil.post('/xui/inbound/list');
+                if (!inboundsMsg.success) {
+                    return;
+                }
+
+                const clientListMsg = await HttpUtil.post('/xui/tgClients/list');
+                if (!clientListMsg.success) {
+                    return;
+                }
+
+                const clientMsgsMsg = await HttpUtil.post('/xui/tgClients/listMsgs');
+                if (!clientMsgsMsg.success) {
+                    return;
+                }
+                this.loading(false);
+
+                this.setInbounds(inboundsMsg.obj);
+                this.setTgClients(clientListMsg.obj);
+                this.setTgClientMsgs(clientMsgsMsg.obj);
+            },
+            setInbounds(dbInbounds) {
+                this.inbounds.splice(0);
+                this.dbInbounds.splice(0);
+                this.clientCount = 0;
+                for (const inbound of dbInbounds) {
+                    const dbInbound = new DBInbound(inbound);
+                    const xrayInbound = dbInbound.toInbound()
+                    this.inbounds.push(xrayInbound);
+                    this.dbInbounds.push(dbInbound);
+
+                    if(dbInbound.protocol == Protocols.VLESS) {
+                        this.clientCount += xrayInbound.settings.vlesses.length;
+                    } else if(inbound.protocol == Protocols.VMESS) {
+                        this.clientCount += xrayInbound.settings.vmesses.length;
+                    }
+
+                }
+            },
+            searchInbounds(key) {
+                if (ObjectUtil.isEmpty(key)) {
+                    this.searchedInbounds = this.dbInbounds.slice();
+                } else {
+                    this.searchedInbounds.splice(0, this.searchedInbounds.length);
+                    this.dbInbounds.forEach(inbound => {
+                        if (ObjectUtil.deepSearch(inbound, key)) {
+                            this.searchedInbounds.push(inbound);
+                        }
+                    });
+                }
+            },
+            clickAction(action, dbInbound) {
+                switch (action.key) {
+                    case "qrcode":
+                        this.showQrcode(dbInbound);
+                        break;
+                    case "edit":
+                        this.openEditInbound(dbInbound);
+                        break;
+                    case "resetTraffic":
+                        this.resetTraffic(dbInbound);
+                        break;
+                    case "delete":
+                        this.delInbound(dbInbound);
+                        break;
+                }
+            },
+            openAddInbound() {
+                inModal.show({
+                    title: '{{ i18n "pages.inbounds.addInbound"}}',
+                    okText: '{{ i18n "pages.inbounds.addTo"}}',
+                    cancelText: '{{ i18n "close" }}',
+                    confirm: async (inbound, dbInbound) => {
+                        inModal.loading();
+                        await this.addInbound(inbound, dbInbound);
+                        inModal.close();
+                    },
+                    isEdit: false
+                });
+            },
+            openEditInbound(dbInbound) {
+                const inbound = dbInbound.toInbound();
+                inModal.show({
+                    title: '{{ i18n "pages.inbounds.modifyInbound"}}',
+                    okText: '{{ i18n "pages.inbounds.revise"}}',
+                    cancelText: '{{ i18n "close" }}',
+                    inbound: inbound,
+                    dbInbound: dbInbound,
+                    confirm: async (inbound, dbInbound) => {
+                        inModal.loading();
+                        await this.updateInbound(inbound, dbInbound);
+                        inModal.close();
+                    },
+                    isEdit: true
+                });
+            },
+            async addInbound(inbound, dbInbound) {
+                const data = {
+                    up: dbInbound.up,
+                    down: dbInbound.down,
+                    total: dbInbound.total,
+                    remark: dbInbound.remark,
+                    enable: dbInbound.enable,
+                    expiryTime: dbInbound.expiryTime,
+
+                    listen: inbound.listen,
+                    port: inbound.port,
+                    protocol: inbound.protocol,
+                    settings: inbound.settings.toString(),
+                    streamSettings: inbound.stream.toString(),
+                    sniffing: inbound.canSniffing() ? inbound.sniffing.toString() : '{}',
+                };
+                await this.submit('/xui/inbound/add', data, inModal);
+            },
+            async updateInbound(inbound, dbInbound) {
+                const data = {
+                    up: dbInbound.up,
+                    down: dbInbound.down,
+                    total: dbInbound.total,
+                    remark: dbInbound.remark,
+                    enable: dbInbound.enable,
+                    expiryTime: dbInbound.expiryTime,
+
+                    listen: inbound.listen,
+                    port: inbound.port,
+                    protocol: inbound.protocol,
+                    settings: inbound.settings.toString(),
+                    streamSettings: inbound.stream.toString(),
+                    sniffing: inbound.canSniffing() ? inbound.sniffing.toString() : '{}',
+                };
+                return await this.submit(`/xui/inbound/update/${dbInbound.id}`, data, inModal);
+            },
+            resetTraffic(dbInbound) {
+                this.$confirm({
+                    title: '{{ i18n "pages.inbounds.resetTraffic"}}',
+                    content: '{{ i18n "pages.inbounds.resetTrafficContent"}}',
+                    okText: '{{ i18n "reset"}}',
+                    cancelText: '{{ i18n "cancel"}}',
+                    onOk: () => {
+                        const inbound = dbInbound.toInbound();
+                        dbInbound.up = 0;
+                        dbInbound.down = 0;
+                        this.updateInbound(inbound, dbInbound);
+                    },
+                });
+            },
+            delInbound(dbInbound) {
+                this.$confirm({
+                    title: '{{ i18n "pages.inbounds.deleteInbound"}}',
+                    content: '{{ i18n "pages.inbounds.deleteInboundContent"}}',
+                    okText: '{{ i18n "delete"}}',
+                    cancelText: '{{ i18n "cancel"}}',
+                    onOk: () => this.submit('/xui/inbound/del/' + dbInbound.id),
+                });
+            },
+            showQrcode(dbInbound) {
+                const link = dbInbound.genLink();
+                qrModal.show('{{ i18n "qrCode"}}', link, dbInbound);
+            },
+            showInfo(dbInbound) {
+                infoModal.show(dbInbound);
+            },
+            switchEnable(dbInbound) {
+                this.submit(`/xui/inbound/update/${dbInbound.id}`, dbInbound);
+            },
+            async submit(url, data, modal) {
+                const msg = await HttpUtil.postWithModal(url, data, modal);
+                if (msg.success) {
+                    await this.getDBData();
+                }
+                return msg
+            },
+            getInboundClients(dbInbound) {
+                if(dbInbound.protocol == Protocols.VLESS) {
+                    return dbInbound.toInbound().settings.vlesses
+                } else if(dbInbound.protocol == Protocols.VMESS) {
+                    return dbInbound.toInbound().settings.vmesses
+                }
+            },
+            isExpiry(dbInbound, index) {
+                return dbInbound.toInbound().isExpiry(index)
+            },
+            getUpStats(dbInbound, email) {
+                clientStats = dbInbound.clientStats
+                if(clientStats.length > 0)
+                {
+                    for (const key in clientStats) {
+                        if (Object.hasOwnProperty.call(clientStats, key)) {
+                            if(clientStats[key]['email'] == email)
+                                return clientStats[key]['up']
+
+                        }
+                    }
+                }
+
+            },
+            getDownStats(dbInbound, email) {
+                clientStats = dbInbound.clientStats
+                if(clientStats.length > 0)
+                {
+                    for (const key in clientStats) {
+                        if (Object.hasOwnProperty.call(clientStats, key)) {
+                            if(clientStats[key]['email'] == email)
+                                return clientStats[key]['down']
+
+                        }
+                    }
+                }
+            },
+            isTrafficExhausted(dbInbound, email) {
+                clientStats = dbInbound.clientStats
+                if(clientStats.length > 0)
+                {
+                    for (const key in clientStats) {
+                        if (Object.hasOwnProperty.call(clientStats, key)) {
+                            if(clientStats[key]['email'] == email)
+                                return clientStats[key]['down']+clientStats[key]['up'] > clientStats[key]['total']
+
+                        }
+                    }
+                }
+            },
+            isClientEnabled(dbInbound, email) {
+                clientStats = dbInbound.clientStats
+                if(clientStats.length > 0)
+                {
+                    for (const key in clientStats) {
+                        if (Object.hasOwnProperty.call(clientStats, key)) {
+                            if(clientStats[key]['email'] == email)
+                                return clientStats[key]['enable']
+
+                        }
+                    }
+                }
+            },
+            setTgClients(tgClients) {
+                this.tgClients.splice(0);
+                for (const client of tgClients) {
+                    const tgClient = new TgClient(client);
+                    tgClient.clientUid = tgClient.clientUid.split(",");
+                    this.tgClients.push(tgClient);
+                }
+            },
+            setTgClientMsgs(tgClientMsgs) {
+                this.tgClientMsgs.splice(0);
+                for (const tgMsg of tgClientMsgs) {
+                    const tgClientMsg = new TgClientMsg(tgMsg);
+                    tgClientMsg.clientName = this.findTgClientById(tgClientMsg.chatId).clientName;
+                    tgClientMsg.msg = tgMsg.msg.split(",");
+                    this.tgClientMsgs.push(tgClientMsg);
+                }
+            },
+            findTgClientById(chatId) {
+                return this.tgClients.find(client => client.chatId == chatId);
+            },
+            approveTgClient(tgMsg, newClient) {
+                inbound = this.dbInbounds[0].toInbound();
+                dbInbound = this.dbInbounds[0];
+                tgClient = new TgClient(this.findTgClientById(tgMsg.chatId));
+                newClient = newClient;
+
+                // Find the UUID for renewal
+                const res = tgMsg.msg.find(line => line.startsWith("Acc:"));
+                if (res !== undefined) {
+                    tgClient.clientUid = res.replace("Acc:", "").trim();
+                }
+                tgClientModal.show({
+                    title: '{{ i18n "pages.inbounds.tg.approveTgClient"}}',
+                    cancelText: '{{ i18n "close" }}',
+                    tgClient: tgClient,
+                    newClient: newClient,
+                    inbound: inbound,
+                    dbInbound: dbInbound,
+                    newClient: newClient,
+                    confirm: async (inbound, dbInbound, client, newClient) => {
+                        var msg = await this.updateInbound(inbound, dbInbound);
+                        if (!msg.success) {
+                            return;
+                        }
+                        tgClientModal.loading();
+                        tgClient.clientUid = client.id;
+                        tgClient.enabled = true;
+                        if (newClient) {
+                            msg = await HttpUtil.postWithModal(`/xui/tgClients/registerClient`, tgClient, tgClientModal);
+                        } else {
+                            msg = await HttpUtil.postWithModal(`/xui/tgClients/renewClient`, tgClient, tgClientModal);
+                        }
+                        if (msg.success) {
+                            msg = await HttpUtil.postWithModal('/xui/tgClients/msg/del/' + tgMsg.id);
+                        }
+                        await this.getDBData();
+                        tgClientModal.close();
+                    }
+                });
+            },
+            sendMsgToClient(chatId) {
+                tgClientMsgModal.show({
+                    title: '{{ i18n "pages.inbounds.tg.approveTgClient"}}',
+                    okText: '{{ i18n "pages.inbounds.revise"}}',
+                    cancelText: '{{ i18n "close" }}',
+                    chatId: chatId,
+                    confirm: async (clientMsg) => {
+                        tgClientMsgModal.loading();
+                        if (chatId > 0) {
+                            await this.submit(`/xui/tgClients/sendMsg`, clientMsg, tgClientMsgModal);
+                        } else {
+                            await this.submit(`/xui/tgClients/sendMsgToAll`, clientMsg, tgClientMsgModal);
+                        }
+                        tgClientMsgModal.close();
+                    }
+                });
+            },
+            deleteTgClient(tgClient) {
+                this.$confirm({
+                    title: '{{ i18n "pages.inbounds.tg.deleteTgClient"}}',
+                    content: '{{ i18n "pages.inbounds.tg.deleteTgClientContent"}}',
+                    okText: '{{ i18n "delete"}}',
+                    cancelText: '{{ i18n "cancel"}}',
+                    onOk: () => this.submit('/xui/tgClients/del/' + tgClient.chatId),
+                });
+            },
+            deleteTgMsg(tgMsg) {
+                this.$confirm({
+                    title: '{{ i18n "pages.inbounds.tg.deleteTgMsg"}}',
+                    content: '{{ i18n "pages.inbounds.tg.deleteTgMsgContent"}}',
+                    okText: '{{ i18n "delete"}}',
+                    cancelText: '{{ i18n "cancel"}}',
+                    onOk: () => this.submit('/xui/tgClients/msg/del/' + tgMsg.id),
+                });
+            },
+        },
+        watch: {
+            searchKey(value) {
+                this.searchInbounds(value);
+            }
+        },
+        mounted() {
+            this.getDBData();
+        },
+        computed: {
+            total() {
+                let down = 0, up = 0;
+                for (let i = 0; i < this.dbInbounds.length; ++i) {
+                    down += this.dbInbounds[i].down;
+                    up += this.dbInbounds[i].up;
+                }
+                return {
+                    down: down,
+                    up: up,
+                };
+            }
+        },
+    });
+
+</script>
+
+{{template "tgClientApprovalModal"}}
+{{template "tgClientMsgModal"}}
+{{template "inboundModal"}}
+{{template "promptModal"}}
+{{template "qrcodeModal"}}
+{{template "textModal"}}
+{{template "inboundInfoModal"}}
+</body>
+</html>

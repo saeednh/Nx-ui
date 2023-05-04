@@ -1,0 +1,69 @@
+{{define "tgClientMsgModal"}}
+<a-modal id="tg-client-msg-modal" v-model="tgClientMsgModal.visible" :title="tgClientMsgModal.title" @ok="tgClientMsgModal.ok"
+         :confirm-loading="tgClientMsgModal.confirmLoading" :closable="true" :mask-closable="false"
+         :ok-text="tgClientMsgModal.okText" cancel-text='{{ i18n "close" }}'>
+        <a-form layout="inline">
+        <a-form-item>
+            <span slot="label">
+                Message
+                <a-tooltip>
+                    <template slot="title">
+                        The email must be completely unique
+                    </template>
+                </a-tooltip>
+            </span>
+            <a-textarea v-model.trim="clientMsg.msg" rows="10" showCount :maxlength="4096"></a-textarea>
+        </a-form-item>
+    </a-form>
+</a-modal>
+<script>
+
+    const tgClientMsgModal = {
+        title: '',
+        visible: false,
+        confirmLoading: false,
+        okText: '{{ i18n "sure" }}',
+        confirm: null,
+        isEdit: true,
+        chatId: -1,
+
+        clientMsg: new TgClientMsg(),
+        
+        ok() {
+            ObjectUtil.execute(tgClientMsgModal.confirm, tgClientMsgModal.clientMsg);
+        },
+        show({ title='', okText='{{ i18n "sure" }}', isEdit=true, chatId, confirm=(clientMsg)=>{} }) {
+            this.title = title;
+            this.okText = okText;
+            this.confirm = confirm;
+            this.visible = true;
+            this.isEdit = isEdit;
+            this.clientMsg.chatId = chatId;
+        },
+        close() {
+            tgClientMsgModal.visible = false;
+            tgClientMsgModal.loading(false);
+        },
+        loading(loading) {
+            tgClientMsgModal.confirmLoading = loading;
+        },
+
+    };
+
+    new Vue({
+        delimiters: ['[[', ']]'],
+        el: '#tg-client-msg-modal',
+        data: {
+            tgClientMsgModal: tgClientMsgModal,
+
+            get clientMsg() {
+                return tgClientMsgModal.clientMsg;
+            },
+        },
+        methods: {
+
+        },
+    });
+
+</script>
+{{end}}
